@@ -649,7 +649,20 @@ hipError_t hipMalloc(void** ptr, size_t size) ;
  */
 hipError_t hipMallocHost(void** ptr, size_t size) ;
 
+/**
+ *  Allocates at least width (in bytes) * height bytes of linear memory
+ *  Padding may occur to ensure alighnment requirements are met for the given row
+ *  The change in width size due to padding will be returned in *pitch.
+ *  Currently the alignment is set to 128 bytes
+ *
+ *  @param[out] ptr Pointer to the allocated device memory
+ *  @param[out] pitch Pitch for allocation (in bytes)
+ *  @param[in]  width Requested pitched allocation width (in bytes)
+ *  @param[in]  height Requested pitched allocation height
+ *  @return Error code
+ */
 
+hipError_t hipMallocPitch(void** ptr, size_t* pitch, size_t width, size_t height);
 
 // TODO-doc (error codes)
 /**

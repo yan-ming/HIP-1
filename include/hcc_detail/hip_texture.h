@@ -33,9 +33,20 @@ THE SOFTWARE.
 //Texture - TODO - likely need to move this to a separate file only included with kernel compilation.
 #define hipTextureType1D 1
 
+typedef enum {
+  hipChannelFormatKindSigned = 0,
+  hipChannelFormatKindUnsigned,
+  hipChannelFormatKindFloat,
+  hipChannelFormatKindNone
+
+} hipChannelFormatKind;
+
 typedef struct hipChannelFormatDesc {
-    // TODO - this has 4-5 well-defined fields, we could just copy...
-    int _dummy;
+  int x;
+  int y;
+  int z;
+  int w;
+  hipChannelFormatKind f;
 } hipChannelFormatDesc;
 
 typedef enum hipTextureReadMode 
@@ -62,13 +73,40 @@ struct texture : public textureReference {
     const T * _dataPtr;  // pointer to underlying data.
 
     //texture() : filterMode(hipFilterModePoint), normalized(false), _dataPtr(NULL) {};
+    unsigned int width;
+    unsigned int height;
+
 };
+
+typedef struct hipArray {
+  unsigned int width;
+  unsigned int height;
+  hipChannelFormatKind f;
+  void* data; //FIXME: generalize this
+} hipArray;
+
 
 
 
 
 #define tex1Dfetch(_tex, _addr) (_tex._dataPtr[_addr])
 
+#define tex2D(_tex, _dx, _dy) \
+  _tex._dataPtr[(unsigned int)_dx + (unsigned int)_dy*(_tex.width)]
+
+hipChannelFormatDesc hipCreateChannelDesc(int x=0, int y=0, int z=0, int w=0, hipChannelFormatKind f=hipChannelFormatKindFloat);
+
+hipError_t hipMallocArray(hipArray** array, const hipChannelFormatDesc* desc,
+                          size_t width, size_t height = 0, unsigned int flags = 0);
+
+hipError_t hipFreeArray(hipArray* array);
+  //
+// dpitch, spitch, and width in bytes
+hipError_t hipMemcpy2D(void* dst, size_t dpitch, const void* src, size_t spitch, size_t width, size_t height, hipMemcpyKind kind);
+
+// wOffset, width, and spitch in bytes
+hipError_t hipMemcpy2DToArray(hipArray* dst, size_t wOffset, size_t hOffset, const void* src,
+                              size_t spitch, size_t width, size_t height, hipMemcpyKind kind);
 
 
 
@@ -152,15 +190,23 @@ hipError_t  hipBindTexture(size_t *offset,
     return  hipBindTexture(offset, tex, devPtr, &tex.channelDesc, size);
 }
 
+template <class T, int dim, enum hipTextureReadMode readMode>
+hipError_t hipBindTextureToArray(struct texture<T, dim, readMode> &tex, hipArray* array) {
+  tex.width = array->width;
+  tex.height = array->height;
+  tex._dataPtr = static_cast<const T*>(array->data);
+  return hipSuccess;
+}
+
 
 /*
  * @brief hipUnbindTexture
  **/
 // TODO-doc
 template <class T, int dim, enum hipTextureReadMode readMode>
-hipError_t  hipUnbindTexture(struct texture<T, dim, readMode> *tex)
+hipError_t  hipUnbindTexture(struct texture<T, dim, readMode> &tex)
 {
-    tex->_dataPtr = NULL;
+    tex._dataPtr = NULL;
 
     return hipSuccess;
 }

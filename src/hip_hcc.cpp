@@ -1324,6 +1324,100 @@ hipError_t hipMallocHost(void** ptr, size_t sizeBytes)
 #endif
 }
 
+// width in bytes
+hipError_t hipMallocPitch(void** ptr, size_t* pitch, size_t width, size_t height) {
+  hipError_t err = hipSuccess;
+  std::call_once(hip_initialized, ihipInit);
+
+  if(width == 0 || height == 0)
+    return ihipLogStatus(hipErrorUnknown);
+
+  *pitch = ((((int)width-1)/128) + 1)*128;
+
+  err = hipMalloc(ptr, (*pitch)*height);
+
+  return ihipLogStatus(err);
+}
+
+hipChannelFormatDesc hipCreateChannelDesc(int x, int y, int z, int w, hipChannelFormatKind f) {
+  hipChannelFormatDesc cd;
+  cd.x = x; cd.y = y; cd.z = z; cd.w = w;
+  cd.f = f;
+  return cd;
+}
+
+hipError_t hipMallocArray(hipArray** array, const hipChannelFormatDesc* desc,
+                          size_t width, size_t height, unsigned int flags) {
+    hipError_t err = hipSuccess;
+    std::call_once(hip_initialized, ihipInit);
+
+    *array = (hipArray*)malloc(sizeof(hipArray));
+    array[0]->width = width;
+    array[0]->height = height;
+
+    array[0]->f = desc->f;
+
+    switch(desc->f) {
+      case hipChannelFormatKindSigned:
+        err = hipMalloc((void**)&array[0]->data, width*height*sizeof(int));
+        break;
+      case hipChannelFormatKindUnsigned:
+        err = hipMalloc((void**)&array[0]->data, width*height*sizeof(unsigned int));
+        break;
+      case hipChannelFormatKindFloat:
+        err = hipMalloc((void**)&array[0]->data, width*height*sizeof(float));
+        break;
+      case hipChannelFormatKindNone:
+        err = hipMalloc((void**)&array[0]->data, width*height*sizeof(size_t));
+        break;
+      default:
+        err = hipErrorUnknown;
+        break;
+    }
+
+    return ihipLogStatus(err);
+}
+
+// dpitch, spitch, and width in bytes
+hipError_t hipMemcpy2D(void* dst, size_t dpitch, const void* src, size_t spitch,
+                       size_t width, size_t height, hipMemcpyKind kind) {
+  hipError_t err = hipSuccess;
+  std::call_once(hip_initialized, ihipInit);
+
+  if(width > dpitch || width > spitch)
+    return ihipLogStatus(hipErrorUnknown);
+// FIXME: is size_t correct?
+  int dp_sz = dpitch/sizeof(float);
+  int sp_sz = spitch/sizeof(float);
+
+  for(int i = 0; i < height; ++i) {
+    hipMemcpy((float*)dst + i*dp_sz, (float*)src + i*sp_sz, width, kind);
+  }
+
+  return ihipLogStatus(err);
+}
+
+// wOffset, width, and spitch in bytes
+hipError_t hipMemcpy2DToArray(hipArray* dst, size_t wOffset, size_t hOffset, const void* src,
+                                    size_t spitch, size_t width, size_t height, hipMemcpyKind kind) {
+  hipError_t err = hipSuccess;
+  std::call_once(hip_initialized, ihipInit);
+
+  if((wOffset + width > (dst->width * sizeof(float))) || width > spitch) {
+    return ihipLogStatus(hipErrorUnknown);
+  }
+
+// FIXME: is size_t correct?
+  int src_w = width/sizeof(float);
+  int dst_w = dst->width;
+
+  for(int i = 0; i < height; ++i) {
+    err = hipMemcpy((float*)dst->data + i*dst_w, (float*)src + i*src_w, width, kind);
+  }
+
+  return ihipLogStatus(err);
+}
+
 hipError_t hipMemcpyToSymbol(const char* symbolName, const void *src, size_t count, size_t offset, hipMemcpyKind kind)
 {
 #ifdef USE_MEMCPYTOSYMBOL
@@ -1542,7 +1636,16 @@ hipError_t hipFreeHost(void* ptr)
     return ihipLogStatus(hipSuccess);
 };
 
+hipError_t hipFreeArray(hipArray* array)
+{
+  std::call_once(hip_initialized, ihipInit);
 
+  if(array->data) {
+    hipFree(array->data);
+  }
+
+  return ihipLogStatus(hipSuccess);
+}
 
 /**
  * @warning HCC returns 0 in *canAccessPeer ; Need to update this function when RT supports P2P
