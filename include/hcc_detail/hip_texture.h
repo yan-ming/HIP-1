@@ -108,6 +108,8 @@ hipError_t hipMemcpy2D(void* dst, size_t dpitch, const void* src, size_t spitch,
 hipError_t hipMemcpy2DToArray(hipArray* dst, size_t wOffset, size_t hOffset, const void* src,
                               size_t spitch, size_t width, size_t height, hipMemcpyKind kind);
 
+hipError_t hipMemcpyToArray(hipArray* dst, size_t wOffset, size_t hOffset,
+                            const void* src, size_t count, hipMemcpyKind kind);
 
 
 /**

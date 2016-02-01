@@ -1418,6 +1418,17 @@ hipError_t hipMemcpy2DToArray(hipArray* dst, size_t wOffset, size_t hOffset, con
   return ihipLogStatus(err);
 }
 
+hipError_t hipMemcpyToArray(hipArray* dst, size_t wOffset, size_t hOffset,
+                            const void* src, size_t count, hipMemcpyKind kind) {
+  hipError_t err = hipSuccess;
+  std::call_once(hip_initialized, ihipInit);
+
+  // wOffset is in bytes
+  hipMemcpy((char *)dst->data + wOffset, src, count, kind);
+
+  return ihipLogStatus(err);
+}
+
 hipError_t hipMemcpyToSymbol(const char* symbolName, const void *src, size_t count, size_t offset, hipMemcpyKind kind)
 {
 #ifdef USE_MEMCPYTOSYMBOL
