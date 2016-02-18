@@ -57,6 +57,13 @@ extern "C" {
 #define hipEventDisableTiming 0x2  ///< Disable event's capability to record timing information.  May improve performance.  
 #define hipEventInterprocess  0x4  ///< Event can support IPC.  @warning - not supported in HIP.
 
+//!Flags that can be used with hipHostAlloc
+#define hipHostAllocDefault       0x0
+#define hipHostAllocPortable      0x1
+#define hipHostAllocMapped        0x2
+#define hipHostAllocWriteCombined 0x3
+
+
 
 /**
  * @warning On AMD devices and recent NVIDIA devices, these hints and controls are ignored.
@@ -648,6 +655,10 @@ hipError_t hipMalloc(void** ptr, size_t size) ;
  *  @return Error code
  */
 hipError_t hipMallocHost(void** ptr, size_t size) ;
+
+hipError_t hipHostAlloc(void** ptr, size_t size, unsigned flags);
+hipError_t hipHostGetDevicePointer(void **ptr, void **pHost, unsigned flags);
+
 
 /**
  *  Allocates at least width (in bytes) * height bytes of linear memory

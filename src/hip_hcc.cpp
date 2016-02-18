@@ -1324,6 +1324,45 @@ hipError_t hipMallocHost(void** ptr, size_t sizeBytes)
 #endif
 }
 
+hipError_t hipHostAlloc(void** ptr, size_t size, unsigned flags) {
+    std::call_once(hip_initialized, ihipInit);
+
+// call to hipMallocHost when pinned host available
+
+#if USE_PINNED_HOST
+    // XXX: unimplemented
+    if (flags == hipHostAllocPortable ||
+        flags == hipHostAllocWriteCombined)
+        return ihipLogStatus(hipErrorMemoryAllocation);
+
+    if (flags == hipHostAllocDefault ||
+        flags == hipHostAllocMapped) {
+        hipError_t hip_status = hipMallocHost(ptr, size);
+        return hip_status;
+    } else {
+        return ihipLogStatus(hipErrorMemoryAllocation);
+    }
+#else
+    return ihipLogStatus(hipErrorMemoryAllocation);
+#endif
+
+}
+
+hipError_t hipHostGetDevicePointer(void **pDev, void **pHost, unsigned flags) {
+    if (flags != 0)
+        return ihipLogStatus(hipErrorMemoryAllocation);
+    std::call_once(hip_initialized, ihipInit);
+
+    // return the pointer from hipHostAlloc direcly
+    if (*pHost != NULL) {
+        *pDev = *pHost;
+        return ihipLogStatus(hipSuccess);
+    }
+    else {
+        return ihipLogStatus(hipErrorMemoryAllocation);
+    }
+}
+
 // width in bytes
 hipError_t hipMallocPitch(void** ptr, size_t* pitch, size_t width, size_t height) {
   hipError_t err = hipSuccess;
